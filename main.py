@@ -9,7 +9,6 @@ from bs4 import BeautifulSoup
 
 openai.api_key = ""
 
-# A helper prompt template asking for specific financial metrics in JSON
 PROMPT_TEMPLATE = """
 You are a financial data extraction assistant. 
 Given the following text from a company's earnings report, please extract any mention of:
@@ -51,9 +50,7 @@ def extract_text_from_html(url_or_path: str) -> str:
         with open(url_or_path, "r", encoding="utf-8") as f:
             html_content = f.read()
 
-    # Parse HTML and extract visible text
     soup = BeautifulSoup(html_content, "html.parser")
-    # A simple approach: get all text from <body> or the entire doc
     text = soup.get_text(separator="\n")
     return text
 
@@ -75,7 +72,6 @@ def chunk_text(text: str, max_chars: int = 3000):
             current_chunk.append(line)
             current_length += line_length
     
-    # Add the last chunk
     if current_chunk:
         chunks.append("\n".join(current_chunk))
 
@@ -84,7 +80,6 @@ def chunk_text(text: str, max_chars: int = 3000):
 def extract_financial_data(text: str):
     text_chunks = chunk_text(text)
 
-    # We'll store partial results from each chunk
     aggregated_data = {
         "Revenue": [],
         "Earnings": [],
@@ -94,10 +89,8 @@ def extract_financial_data(text: str):
     }
 
     for chunk_index, chunk_content in enumerate(text_chunks):
-        # Prepare the prompt
         prompt = PROMPT_TEMPLATE.format(chunk_text=chunk_content)
 
-        # Call ChatGPT
         response = openai.ChatCompletion.create(
             model="gpt-4o-mini",
             messages=[
@@ -107,14 +100,12 @@ def extract_financial_data(text: str):
             temperature=0  # lower temperature => more deterministic response
         )
 
-        # Extract the response content
         chatgpt_reply = response["choices"][0]["message"]["content"].strip()
 
         print(f"--- ChatGPT raw response for chunk {chunk_index} ---")
         print(chatgpt_reply)
         print("-----------------------------------------------")
 
-        # Try to parse JSON. If that fails, just store raw text.
         import json
         try:
             data = json.loads(chatgpt_reply)
@@ -133,7 +124,6 @@ def extract_financial_data(text: str):
             aggregated_data["Revenue"].append("Failed to parse JSON in chunk {}".format(chunk_index))
             continue
 
-    # Consolidate final results (join multiple chunk outputs, if any)
     final_result = {
         key: "; ".join(val_list) if val_list else ""
         for key, val_list in aggregated_data.items()
@@ -148,7 +138,6 @@ def main():
 
     input_path = sys.argv[1]
 
-    # Detect PDF or HTML by extension or by URL
     if input_path.lower().endswith(".pdf"):
         print(f"[*] Detected PDF input: {input_path}")
         text = extract_text_from_pdf(input_path)
@@ -159,14 +148,11 @@ def main():
         print("[!] Unknown file format. Please provide a .pdf file or an HTML (.html) file or a URL.")
         sys.exit(1)
 
-    # Raw text from the doc
     print("[*] Extracted text length:", len(text))
 
-    # Use ChatGPT to extract financial metrics
     print("[*] Extracting financial metrics with ChatGPT...")
     results = extract_financial_data(text)
 
-    # Print final result as JSON
     import json
     print("[*] Final extracted metrics (JSON):")
     print(json.dumps(results, indent=2))
