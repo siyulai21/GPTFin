@@ -1,4 +1,4 @@
-Set Your OpenAI Key:
+Set your OpenAI key:
 export OPENAI_API_KEY="xxxx"
 
 Run the script:
